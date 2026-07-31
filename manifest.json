@@ -1,0 +1,75 @@
+{
+  "id": "service_bus",
+  "name": "Azure Service Bus",
+  "name_en": "Azure Service Bus",
+  "version": "1.0.0",
+  "description": "Mensajería empresarial en Azure Service Bus: enviar mensaje a una cola, recibir mensaje y consultar métricas de la cola",
+  "description_en": "Enterprise messaging in Azure Service Bus: send a message to a queue, receive a message and query queue metrics",
+  "icon": "icon.svg",
+  "category": "cloud",
+  "category_en": "cloud",
+  "keywords": ["azure", "service bus", "servicebus", "mensajeria", "messaging", "cola", "queue", "microsoft", "cloud", "nube"],
+  "library": {
+    "package": "ruvic-service-bus-connector",
+    "install": "pip install git+https://github.com/Dgirto/Azure-Service-Bus.git#subdirectory=lib",
+    "import_name": "ruvic_service_bus_connector"
+  },
+  "auth_modes": [
+    {
+      "id": "service_principal",
+      "label": "Service Principal (Azure AD)",
+      "fields": [
+        {
+          "key": "tenant_id",
+          "label": "Tenant ID",
+          "type": "text",
+          "required": true,
+          "placeholder": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "key": "client_id",
+          "label": "Client ID",
+          "type": "text",
+          "required": true,
+          "placeholder": "00000000-0000-0000-0000-000000000000"
+        },
+        {
+          "key": "client_secret",
+          "label": "Client Secret",
+          "type": "password",
+          "secret": true,
+          "required": true
+        },
+        {
+          "key": "fully_qualified_namespace",
+          "label": "Namespace de Service Bus",
+          "type": "text",
+          "required": true,
+          "placeholder": "mi-namespace.servicebus.windows.net"
+        },
+        {
+          "key": "queue_name",
+          "label": "Cola",
+          "type": "text",
+          "required": true,
+          "placeholder": "mi-cola-produccion",
+          "help_text": "El conector opera sobre una única cola (no topics/subscriptions, que tienen un modelo de consumo distinto)."
+        },
+        {
+          "key": "connect_timeout",
+          "label": "Timeout de conexión (segundos)",
+          "type": "number",
+          "required": false,
+          "default": "10"
+        }
+      ]
+    }
+  ],
+  "env_prefix": "RUVIC_SERVICE_BUS_",
+  "operations": ["servicebus.send_message", "servicebus.receive_message", "servicebus.get_queue_metrics"],
+  "test_connection": true,
+  "docs": {
+    "skill": "SKILL.md",
+    "permissions_note": "El Service Principal necesita el rol RBAC 'Azure Service Bus Data Sender' (para enviar) y 'Azure Service Bus Data Receiver' (para recibir y consultar métricas), ambos limitados al namespace o a la cola configurada. No se requieren permisos de administración del namespace (crear/eliminar colas, cambiar configuración). Este conector SÍ escribe (envía mensajes) y elimina datos reales (recibir un mensaje lo quita de la cola)."
+  }
+}

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ruvic-service-bus-connector"
+version = "1.0.0"
+description = "Conector Ruvic de mensajería empresarial en Azure Service Bus"
+requires-python = ">=3.10"
+dependencies = [
+    "azure-identity>=1.15,<2.0",
+    "azure-servicebus>=7.11,<8.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["ruvic_service_bus_connector*"]

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="doc_title">Conector Azure Service Bus — Ruvic</title>
+  <link rel="stylesheet" href="assets/ruvic.css">
+</head>
+<body>
+  <main class="ruvic-container">
+    <nav class="ruvic-toc" aria-label="Índice">
+      <h2 data-i18n="toc_title">Contenido</h2>
+      <ol>
+        <li><a href="#que-es" data-i18n="toc.que_es">¿Qué es y para qué sirve?</a></li>
+        <li><a href="#prerrequisitos" data-i18n="toc.prerrequisitos">Prerrequisitos</a></li>
+        <li><a href="#configuracion-fabricante" data-i18n="toc.configuracion_fabricante">Configuración en el fabricante</a></li>
+        <li><a href="#permisos" data-i18n="toc.permisos">Permisos requeridos</a></li>
+        <li><a href="#configuracion-ruvic" data-i18n="toc.configuracion_ruvic">Configuración en Ruvic</a></li>
+        <li><a href="#verificacion" data-i18n="toc.verificacion">Verificación</a></li>
+        <li><a href="#solucion-problemas" data-i18n="toc.solucion_problemas">Solución de problemas</a></li>
+        <li><a href="#faq-seguridad" data-i18n="toc.faq_seguridad">Preguntas frecuentes y notas de seguridad</a></li>
+      </ol>
+    </nav>
+
+    <h1 data-i18n="guide_title">Conector Azure Service Bus</h1>
+    <p class="guide-updated">{{ULTIMA_ACTUALIZACION}}</p>
+
+    <section>
+      <h2 id="que-es" data-i18n="section.que_es">¿Qué es y para qué sirve?</h2>
+      <p data-i18n="section.que_es.body">Este conector permite al agente de Ruvic enviar y recibir mensajes en una cola (queue) de Azure Service Bus, y consultar métricas de la cola. Opera únicamente sobre colas; no soporta topics ni subscriptions, que tienen un modelo de consumo distinto.</p>
+      <div class="callout callout-warning">
+        <span class="callout-title" data-i18n="section.que_es.sensitive_title">Este conector escribe y elimina datos reales</span>
+        <span data-i18n="section.que_es.sensitive_body">send_message escribe un mensaje real en la cola. receive_message elimina el mensaje recibido de la cola al confirmarlo (comportamiento estándar de un consumidor peek-lock).</span>
+      </div>
+      <table>
+        <thead><tr><th data-i18n="table.operacion">Operación</th><th data-i18n="table.que_hace">Qué hace</th></tr></thead>
+        <tbody>
+          <tr><td><code>servicebus.send_message</code></td><td data-i18n="op.send_message">Envía un mensaje de texto a la cola configurada</td></tr>
+          <tr><td><code>servicebus.receive_message</code></td><td data-i18n="op.receive_message">Recibe y confirma (elimina) el siguiente mensaje de la cola</td></tr>
+          <tr><td><code>servicebus.get_queue_metrics</code></td><td data-i18n="op.get_queue_metrics">Consulta métricas de solo lectura de la cola</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2 id="prerrequisitos" data-i18n="section.prerrequisitos">Prerrequisitos</h2>
+      <ul>
+        <li data-i18n="prereq.1">Un <strong>namespace de Azure Service Bus</strong> ya creado, con al menos una cola.</li>
+        <li data-i18n="prereq.2">Acceso a <strong>Azure Active Directory</strong> para registrar una aplicación (Service Principal).</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2 id="configuracion-fabricante" data-i18n="section.configuracion_fabricante">Configuración en el fabricante</h2>
+      <ol class="ruvic-steps">
+        <li>
+          <strong data-i18n="step.1.label">Registra una aplicación (Service Principal) dedicada.</strong>
+          <p data-i18n="step.1.body">En Azure AD → App registrations → New registration. Generá un Client Secret en "Certificates & secrets".</p>
+        </li>
+        <li>
+          <strong data-i18n="step.2.label">Otorgá acceso al namespace o a la cola con mínimo privilegio.</strong>
+          <p data-i18n="step.2.body">Asigná los roles RBAC "Azure Service Bus Data Sender" (para enviar) y "Azure Service Bus Data Receiver" (para recibir y consultar métricas) al Service Principal, con alcance limitado al namespace o, idealmente, a la cola específica.</p>
+        </li>
+        <li>
+          <strong data-i18n="step.3.label">Anotá los identificadores necesarios.</strong>
+          <p data-i18n="step.3.body">Tenant ID, Client ID, Client Secret, el namespace completo (Overview → Host name, ej. mi-namespace.servicebus.windows.net) y el nombre de la cola.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section>
+      <h2 id="permisos" data-i18n="section.permisos">Permisos requeridos</h2>
+      <table>
+        <thead><tr><th data-i18n="table.permiso">Permiso</th><th data-i18n="table.para_que">Para qué sirve</th></tr></thead>
+        <tbody>
+          <tr><td>Azure Service Bus Data Sender</td><td data-i18n="perm.sender">Enviar mensajes a la cola</td></tr>
+          <tr><td>Azure Service Bus Data Receiver</td><td data-i18n="perm.receiver">Recibir mensajes y consultar métricas de la cola</td></tr>
+        </tbody>
+      </table>
+      <div class="callout callout-info">
+        <span class="callout-title" data-i18n="perm.note_title">Nota</span>
+        <span data-i18n="perm.note_body">No se otorga el rol "Azure Service Bus Data Owner" ni permisos de administración del namespace (crear/eliminar colas, cambiar configuración).</span>
+      </div>
+    </section>
+
+    <section>
+      <h2 id="configuracion-ruvic" data-i18n="section.configuracion_ruvic">Configuración en Ruvic</h2>
+      <p data-i18n="ruvic.intro">Entrá a <strong>Settings → Conectores</strong>, buscá <strong>Azure Service Bus</strong> y pulsá <strong>Configurar</strong>. Completá Tenant ID, Client ID, Client Secret, el namespace y el nombre de la cola.</p>
+      <p><span class="ruvic-button" data-i18n="ruvic.test_button">Probar conexión</span><span data-i18n="ruvic.test_note"> — la plataforma consultará las métricas de la cola para confirmar credenciales.</span></p>
+    </section>
+
+    <section>
+      <h2 id="verificacion" data-i18n="section.verificacion">Verificación</h2>
+      <ol class="ruvic-steps">
+        <li><strong data-i18n="verif.1.label">Test de conexión exitoso.</strong><p data-i18n="verif.1.body">"Probar conexión" debe responder con éxito.</p></li>
+        <li><strong data-i18n="verif.2.label">Prueba mínima con el agente.</strong><p data-i18n="verif.2.body">Pedile:</p><blockquote data-i18n="verif.2.quote">"Enviame un mensaje de prueba a la cola y después recibilo de vuelta."</blockquote><p data-i18n="verif.2.result">El agente debe confirmar el envío y luego devolver el contenido del mensaje recibido.</p></li>
+      </ol>
+    </section>
+
+    <section>
+      <h2 id="solucion-problemas" data-i18n="section.solucion_problemas">Solución de problemas</h2>
+      <table>
+        <thead><tr><th data-i18n="table.mensaje">Mensaje / síntoma</th><th data-i18n="table.causa">Causa probable y solución</th></tr></thead>
+        <tbody>
+          <tr><td data-i18n="trouble.1.msg">"Credenciales inválidas o sin permiso suficiente"</td><td data-i18n="trouble.1.fix">Client Secret vencido/rotado, o falta el rol RBAC necesario (Data Sender / Data Receiver) sobre el namespace o la cola.</td></tr>
+          <tr><td data-i18n="trouble.2.msg">"La cola no existe"</td><td data-i18n="trouble.2.fix">Nombre de cola mal escrito, o la cola está en otro namespace distinto al configurado.</td></tr>
+          <tr><td data-i18n="trouble.3.msg">"No se pudo conectar a Service Bus" (timeout)</td><td data-i18n="trouble.3.fix">Namespace incorrecto, o el namespace tiene restringido el acceso de red (firewall/red privada) que bloquea a Ruvic.</td></tr>
+          <tr><td data-i18n="trouble.4.msg">receive_message siempre devuelve vacío</td><td data-i18n="trouble.4.fix">No es un error: significa que no había mensajes disponibles en la cola dentro del tiempo de espera. Verificá que otro consumidor no esté vaciando la cola primero.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2 id="faq-seguridad" data-i18n="section.faq_seguridad">Preguntas frecuentes y notas de seguridad</h2>
+      <h3 data-i18n="faq.1.q">¿El agente puede administrar el namespace (crear/eliminar colas)?</h3>
+      <div data-i18n="faq.1.a"><p>No. El Service Principal solo tiene permisos de envío y recepción de datos; el conector no expone ninguna operación de administración.</p></div>
+      <h3 data-i18n="faq.2.q">¿Dónde queda guardado el Client Secret?</h3>
+      <div data-i18n="faq.2.a"><p>Como secreto en el almacén de credenciales de la plataforma. La interfaz nunca vuelve a mostrarlo.</p></div>
+      <h3 data-i18n="faq.3.q">Rotación de credenciales</h3>
+      <div data-i18n="faq.3.a"><p>Los Client Secrets de Azure AD expiran automáticamente (según lo configurado, hasta 24 meses). Generá uno nuevo antes del vencimiento y actualizalo en el formulario.</p></div>
+      <h3 data-i18n="faq.4.q">¿Qué hago si el Client Secret se compromete?</h3>
+      <div data-i18n="faq.4.a"><ol><li>Eliminá el Client Secret comprometido en Azure AD → App registrations → Certificates & secrets.</li><li>Generá uno nuevo y actualizalo en el formulario.</li><li>Revisá los logs de actividad del namespace (Diagnostic settings) por actividad inesperada.</li></ol></div>
+      <div class="callout callout-warning">
+        <span class="callout-title" data-i18n="faq.warning_title">Buenas prácticas</span>
+        <span data-i18n="faq.warning_body">Usá un Service Principal dedicado con acceso limitado al namespace o, idealmente, a una única cola; nunca uses una identidad con el rol Data Owner; y evitá enviar/recibir mensajes contra una cola de producción sin confirmar primero con el usuario.</span>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const I18N = {
+      es: {
+        doc_title: "Conector Azure Service Bus — Ruvic", toc_title: "Contenido",
+        "toc.que_es": "¿Qué es y para qué sirve?", "toc.prerrequisitos": "Prerrequisitos",
+        "toc.configuracion_fabricante": "Configuración en el fabricante", "toc.permisos": "Permisos requeridos",
+        "toc.configuracion_ruvic": "Configuración en Ruvic", "toc.verificacion": "Verificación",
+        "toc.solucion_problemas": "Solución de problemas", "toc.faq_seguridad": "Preguntas frecuentes y notas de seguridad",
+        guide_title: "Conector Azure Service Bus",
+        "section.que_es": "¿Qué es y para qué sirve?",
+        "section.que_es.body": "Este conector permite al agente de Ruvic enviar y recibir mensajes en una cola (queue) de Azure Service Bus, y consultar métricas de la cola. Opera únicamente sobre colas; no soporta topics ni subscriptions, que tienen un modelo de consumo distinto.",
+        "section.que_es.sensitive_title": "Este conector escribe y elimina datos reales",
+        "section.que_es.sensitive_body": "send_message escribe un mensaje real en la cola. receive_message elimina el mensaje recibido de la cola al confirmarlo (comportamiento estándar de un consumidor peek-lock).",
+        "table.operacion": "Operación", "table.que_hace": "Qué hace",
+        "op.send_message": "Envía un mensaje de texto a la cola configurada",
+        "op.receive_message": "Recibe y confirma (elimina) el siguiente mensaje de la cola",
+        "op.get_queue_metrics": "Consulta métricas de solo lectura de la cola",
+        "section.prerrequisitos": "Prerrequisitos",
+        "prereq.1": "Un <strong>namespace de Azure Service Bus</strong> ya creado, con al menos una cola.",
+        "prereq.2": "Acceso a <strong>Azure Active Directory</strong> para registrar una aplicación (Service Principal).",
+        "section.configuracion_fabricante": "Configuración en el fabricante",
+        "step.1.label": "Registra una aplicación (Service Principal) dedicada.",
+        "step.1.body": "En Azure AD → App registrations → New registration. Generá un Client Secret en \"Certificates & secrets\".",
+        "step.2.label": "Otorgá acceso al namespace o a la cola con mínimo privilegio.",
+        "step.2.body": "Asigná los roles RBAC \"Azure Service Bus Data Sender\" (para enviar) y \"Azure Service Bus Data Receiver\" (para recibir y consultar métricas) al Service Principal, con alcance limitado al namespace o, idealmente, a la cola específica.",
+        "step.3.label": "Anotá los identificadores necesarios.",
+        "step.3.body": "Tenant ID, Client ID, Client Secret, el namespace completo (Overview → Host name, ej. mi-namespace.servicebus.windows.net) y el nombre de la cola.",
+        "section.permisos": "Permisos requeridos", "table.permiso": "Permiso", "table.para_que": "Para qué sirve",
+        "perm.sender": "Enviar mensajes a la cola", "perm.receiver": "Recibir mensajes y consultar métricas de la cola",
+        "perm.note_title": "Nota",
+        "perm.note_body": "No se otorga el rol \"Azure Service Bus Data Owner\" ni permisos de administración del namespace (crear/eliminar colas, cambiar configuración).",
+        "section.configuracion_ruvic": "Configuración en Ruvic",
+        "ruvic.intro": "Entrá a <strong>Settings → Conectores</strong>, buscá <strong>Azure Service Bus</strong> y pulsá <strong>Configurar</strong>. Completá Tenant ID, Client ID, Client Secret, el namespace y el nombre de la cola.",
+        "ruvic.test_button": "Probar conexión",
+        "ruvic.test_note": " — la plataforma consultará las métricas de la cola para confirmar credenciales.",
+        "section.verificacion": "Verificación",
+        "verif.1.label": "Test de conexión exitoso.", "verif.1.body": "\"Probar conexión\" debe responder con éxito.",
+        "verif.2.label": "Prueba mínima con el agente.", "verif.2.body": "Pedile:",
+        "verif.2.quote": "\"Enviame un mensaje de prueba a la cola y después recibilo de vuelta.\"",
+        "verif.2.result": "El agente debe confirmar el envío y luego devolver el contenido del mensaje recibido.",
+        "section.solucion_problemas": "Solución de problemas", "table.mensaje": "Mensaje / síntoma", "table.causa": "Causa probable y solución",
+        "trouble.1.msg": "\"Credenciales inválidas o sin permiso suficiente\"",
+        "trouble.1.fix": "Client Secret vencido/rotado, o falta el rol RBAC necesario (Data Sender / Data Receiver) sobre el namespace o la cola.",
+        "trouble.2.msg": "\"La cola no existe\"",
+        "trouble.2.fix": "Nombre de cola mal escrito, o la cola está en otro namespace distinto al configurado.",
+        "trouble.3.msg": "\"No se pudo conectar a Service Bus\" (timeout)",
+        "trouble.3.fix": "Namespace incorrecto, o el namespace tiene restringido el acceso de red (firewall/red privada) que bloquea a Ruvic.",
+        "trouble.4.msg": "receive_message siempre devuelve vacío",
+        "trouble.4.fix": "No es un error: significa que no había mensajes disponibles en la cola dentro del tiempo de espera. Verificá que otro consumidor no esté vaciando la cola primero.",
+        "section.faq_seguridad": "Preguntas frecuentes y notas de seguridad",
+        "faq.1.q": "¿El agente puede administrar el namespace (crear/eliminar colas)?",
+        "faq.1.a": "No. El Service Principal solo tiene permisos de envío y recepción de datos; el conector no expone ninguna operación de administración.",
+        "faq.2.q": "¿Dónde queda guardado el Client Secret?",
+        "faq.2.a": "Como secreto en el almacén de credenciales de la plataforma. La interfaz nunca vuelve a mostrarlo.",
+        "faq.3.q": "Rotación de credenciales",
+        "faq.3.a": "Los Client Secrets de Azure AD expiran automáticamente (hasta 24 meses). Generá uno nuevo antes del vencimiento y actualizalo en el formulario.",
+        "faq.4.q": "¿Qué hago si el Client Secret se compromete?",
+        "faq.4.a": "Eliminá el Client Secret comprometido en Azure AD. Generá uno nuevo y actualizalo en el formulario. Revisá los logs de actividad del namespace por actividad inesperada.",
+        "faq.warning_title": "Buenas prácticas",
+        "faq.warning_body": "Usá un Service Principal dedicado con acceso limitado al namespace o, idealmente, a una única cola; nunca uses una identidad con el rol Data Owner; y evitá enviar/recibir mensajes contra una cola de producción sin confirmar primero con el usuario.",
+      },
+      en: {
+        doc_title: "Azure Service Bus Connector — Ruvic", toc_title: "Contents",
+        "toc.que_es": "What it is and what it's for", "toc.prerrequisitos": "Prerequisites",
+        "toc.configuracion_fabricante": "Vendor-side setup", "toc.permisos": "Required permissions",
+        "toc.configuracion_ruvic": "Setup in Ruvic", "toc.verificacion": "Verification",
+        "toc.solucion_problemas": "Troubleshooting", "toc.faq_seguridad": "FAQ and security notes",
+        guide_title: "Azure Service Bus Connector",
+        "section.que_es": "What it is and what it's for",
+        "section.que_es.body": "This connector lets the Ruvic agent send and receive messages on an Azure Service Bus queue, and query queue metrics. It only operates on queues; topics/subscriptions are not supported, since they follow a different consumption model.",
+        "section.que_es.sensitive_title": "This connector writes and deletes real data",
+        "section.que_es.sensitive_body": "send_message writes a real message to the queue. receive_message deletes the received message from the queue upon completion (standard peek-lock consumer behavior).",
+        "table.operacion": "Operation", "table.que_hace": "What it does",
+        "op.send_message": "Sends a text message to the configured queue",
+        "op.receive_message": "Receives and completes (deletes) the next message from the queue",
+        "op.get_queue_metrics": "Queries read-only metrics for the queue",
+        "section.prerrequisitos": "Prerequisites",
+        "prereq.1": "An existing <strong>Azure Service Bus namespace</strong> with at least one queue.",
+        "prereq.2": "Access to <strong>Azure Active Directory</strong> to register an application (Service Principal).",
+        "section.configuracion_fabricante": "Vendor-side setup",
+        "step.1.label": "Register a dedicated application (Service Principal).",
+        "step.1.body": "Azure AD → App registrations → New registration. Generate a Client Secret under \"Certificates & secrets\".",
+        "step.2.label": "Grant least-privilege access to the namespace or queue.",
+        "step.2.body": "Assign the RBAC roles \"Azure Service Bus Data Sender\" (to send) and \"Azure Service Bus Data Receiver\" (to receive and query metrics) to the Service Principal, scoped to the namespace or, ideally, the specific queue.",
+        "step.3.label": "Note down the required identifiers.",
+        "step.3.body": "Tenant ID, Client ID, Client Secret, the full namespace (Overview → Host name, e.g. my-namespace.servicebus.windows.net) and the queue name.",
+        "section.permisos": "Required permissions", "table.permiso": "Permission", "table.para_que": "Why the connector needs it",
+        "perm.sender": "Send messages to the queue", "perm.receiver": "Receive messages and query queue metrics",
+        "perm.note_title": "Note",
+        "perm.note_body": "The \"Azure Service Bus Data Owner\" role is not granted, nor is any namespace administration permission (creating/deleting queues, changing configuration).",
+        "section.configuracion_ruvic": "Setup in Ruvic",
+        "ruvic.intro": "Go to <strong>Settings → Connectors</strong>, find <strong>Azure Service Bus</strong> and click <strong>Configure</strong>. Fill in Tenant ID, Client ID, Client Secret, the namespace and the queue name.",
+        "ruvic.test_button": "Test connection",
+        "ruvic.test_note": " — the platform will query queue metrics to confirm credentials.",
+        "section.verificacion": "Verification",
+        "verif.1.label": "Successful connection test.", "verif.1.body": "\"Test connection\" should succeed.",
+        "verif.2.label": "Minimal test with the agent.", "verif.2.body": "Ask:",
+        "verif.2.quote": "\"Send a test message to the queue and then receive it back.\"",
+        "verif.2.result": "The agent should confirm the send and then return the received message's content.",
+        "section.solucion_problemas": "Troubleshooting", "table.mensaje": "Message / symptom", "table.causa": "Likely cause and fix",
+        "trouble.1.msg": "\"Invalid credentials or insufficient permission\"",
+        "trouble.1.fix": "Expired/rotated Client Secret, or missing RBAC role (Data Sender / Data Receiver) on the namespace or queue.",
+        "trouble.2.msg": "\"The queue does not exist\"",
+        "trouble.2.fix": "Queue name mistyped, or the queue lives in a different namespace than configured.",
+        "trouble.3.msg": "\"Could not connect to Service Bus\" (timeout)",
+        "trouble.3.fix": "Wrong namespace, or the namespace has restricted network access (firewall/private network) blocking Ruvic.",
+        "trouble.4.msg": "receive_message always returns empty",
+        "trouble.4.fix": "Not an error: it means no messages were available in the queue within the wait time. Check that another consumer isn't draining the queue first.",
+        "section.faq_seguridad": "FAQ and security notes",
+        "faq.1.q": "Can the agent administer the namespace (create/delete queues)?",
+        "faq.1.a": "No. The Service Principal only has data send/receive permissions; the connector exposes no administration operation.",
+        "faq.2.q": "Where is the Client Secret stored?",
+        "faq.2.a": "As a secret in the platform's credential store. The UI never shows it again.",
+        "faq.3.q": "Credential rotation",
+        "faq.3.a": "Azure AD Client Secrets expire automatically (up to 24 months). Generate a new one before expiry and update it in the form.",
+        "faq.4.q": "What if the Client Secret is compromised?",
+        "faq.4.a": "Delete the compromised Client Secret in Azure AD. Generate a new one and update it in the form. Review the namespace's activity logs for unexpected activity.",
+        "faq.warning_title": "Best practices",
+        "faq.warning_body": "Use a dedicated Service Principal scoped to the namespace or, ideally, a single queue; never use an identity with the Data Owner role; and avoid sending/receiving messages against a production queue without confirming with the user first.",
+      },
+    };
+    (function () {
+      function applyLang(lang) {
+        document.querySelectorAll("[data-i18n]").forEach(function (el) {
+          const key = el.getAttribute("data-i18n");
+          if (I18N[lang] && I18N[lang][key] !== undefined) el.innerHTML = I18N[lang][key];
+        });
+      }
+      let saved = "es";
+      try { const stored = localStorage.getItem("ruvic-docs-lang"); if (stored === "en" || stored === "es") saved = stored; } catch (e) {}
+      applyLang(saved);
+    })();
+  </script>
+</body>
+</html>
