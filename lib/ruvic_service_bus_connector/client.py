@@ -99,6 +99,8 @@ class ServiceBusClient:
         Ejemplo:
             >>> client.send_message("hola mundo")
         """
+        if body is not None and not isinstance(body, str):
+            raise ServiceBusDataError(f"body debe ser un string, no {type(body).__name__}.")
         if not body:
             raise ServiceBusDataError("body no puede estar vacío.")
         try:
@@ -138,6 +140,12 @@ class ServiceBusClient:
             >>> client.receive_message()
             'hola mundo'
         """
+        try:
+            max_wait_seconds = int(max_wait_seconds)
+        except (TypeError, ValueError) as exc:
+            raise ServiceBusDataError(
+                f"max_wait_seconds inválido: {max_wait_seconds!r}. Debe ser un número entero."
+            ) from exc
         try:
             with _AzureServiceBusClient(
                 fully_qualified_namespace=self.config.fully_qualified_namespace,
