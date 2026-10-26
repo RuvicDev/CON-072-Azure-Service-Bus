@@ -70,6 +70,6 @@
   "test_connection": true,
   "docs": {
     "skill": "SKILL.md",
-    "permissions_note": "El Service Principal necesita el rol RBAC 'Azure Service Bus Data Sender' (para enviar) y 'Azure Service Bus Data Receiver' (para recibir y consultar métricas), ambos limitados al namespace o a la cola configurada. No se requieren permisos de administración del namespace (crear/eliminar colas, cambiar configuración). Este conector SÍ escribe (envía mensajes) y elimina datos reales (recibir un mensaje lo quita de la cola)."
+    "permissions_note": "El Service Principal necesita el rol RBAC 'Azure Service Bus Data Sender' (para enviar) y 'Azure Service Bus Data Receiver' (para recibir y para la prueba de conexión); 'Azure Service Bus Data Owner' solo si se usa get_queue_metrics, porque Service Bus exige el derecho Manage para leer la descripción de la cola, ambos limitados al namespace o a la cola configurada. No se requieren permisos de administración del namespace (crear/eliminar colas, cambiar configuración). Este conector SÍ escribe (envía mensajes) y elimina datos reales (recibir un mensaje lo quita de la cola)."
   }
 }

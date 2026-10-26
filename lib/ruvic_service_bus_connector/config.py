@@ -13,6 +13,23 @@ from dataclasses import dataclass
 ENV_PREFIX = "RUVIC_SERVICE_BUS_"
 
 
+def _read_timeout(default: int = 10) -> int:
+    """Lee CONNECT_TIMEOUT tratando el string vacío como ausente: la
+    plataforma envía "" cuando el campo opcional queda en blanco."""
+    raw = (os.environ.get(f"{ENV_PREFIX}CONNECT_TIMEOUT") or "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        raise ValueError(
+            f"{ENV_PREFIX}CONNECT_TIMEOUT debe ser un número entero de segundos, no {raw!r}."
+        ) from None
+    if value <= 0:
+        raise ValueError(f"{ENV_PREFIX}CONNECT_TIMEOUT debe ser mayor que 0, no {value}.")
+    return value
+
+
 @dataclass(frozen=True)
 class ServiceBusConfig:
     """Parámetros de conexión a Azure Service Bus vía Service Principal."""
@@ -59,5 +76,5 @@ class ServiceBusConfig:
             client_secret=os.environ[f"{ENV_PREFIX}CLIENT_SECRET"],
             fully_qualified_namespace=os.environ[f"{ENV_PREFIX}FULLY_QUALIFIED_NAMESPACE"],
             queue_name=os.environ[f"{ENV_PREFIX}QUEUE_NAME"],
-            connect_timeout=int(os.environ.get(f"{ENV_PREFIX}CONNECT_TIMEOUT", "10")),
+            connect_timeout=_read_timeout(),
         )

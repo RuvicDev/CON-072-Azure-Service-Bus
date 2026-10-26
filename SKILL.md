@@ -18,10 +18,11 @@ debe tener asignados, limitados al namespace o a la cola:
 
 - **"Azure Service Bus Data Sender"** — requerido para `send_message`.
 - **"Azure Service Bus Data Receiver"** — requerido para
-  `receive_message` y `get_queue_metrics`.
-
-No uses el rol "Azure Service Bus Data Owner" ni permisos de
-administración del namespace.
+  `receive_message` y la prueba de conexión.
+- **"Azure Service Bus Data Owner"** — solo para `get_queue_metrics`
+  (Service Bus exige el derecho Manage para leer la descripción de la
+  cola). Sin él, las métricas fallan con `ServiceBusAuthError`; envía y
+  recibe igual.
 
 ## Capacidades
 

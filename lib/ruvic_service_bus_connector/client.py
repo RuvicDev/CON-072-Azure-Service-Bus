@@ -13,6 +13,12 @@ hardcodearlas.
 Nota: `receive_message` usa modo peek-lock y confirma (completa) el
 mensaje automáticamente al recibirlo — el mensaje se elimina de la cola
 tras leerse, como es habitual en un consumidor de Service Bus.
+
+Permisos: enviar requiere "Azure Service Bus Data Sender"; recibir y la
+prueba de conexión (ping, que solo hace peek) requieren "Azure Service Bus
+Data Receiver". get_queue_metrics() lee la descripción de la cola, que
+Service Bus exige con el derecho Manage: solo funciona con "Azure Service
+Bus Data Owner".
 """
 
 from __future__ import annotations
@@ -28,7 +34,13 @@ from azure.core.exceptions import (
 from azure.identity import ClientSecretCredential
 from azure.servicebus import ServiceBusClient as _AzureServiceBusClient
 from azure.servicebus import ServiceBusMessage
-from azure.servicebus.exceptions import ServiceBusError
+from azure.servicebus.exceptions import (
+    MessageLockLostError,
+    MessagingEntityNotFoundError,
+    ServiceBusAuthenticationError,
+    ServiceBusAuthorizationError,
+    ServiceBusError,
+)
 from azure.servicebus.management import ServiceBusAdministrationClient
 
 from .config import ServiceBusConfig
@@ -72,7 +84,9 @@ class ServiceBusClient:
         return self._credential
 
     def ping(self) -> bool:
-        """Verifica la conexión consultando las métricas de la cola.
+        """Verifica la conexión espiando (peek) la cola, sin consumir ni
+        bloquear mensajes. Solo requiere el rol "Azure Service Bus Data
+        Receiver".
 
         Returns:
             True si la conexión funciona.
@@ -80,7 +94,24 @@ class ServiceBusClient:
         Raises:
             ServiceBusAuthError / ServiceBusNetworkError / ServiceBusDataError.
         """
-        self.get_queue_metrics()
+        try:
+            with _AzureServiceBusClient(
+                fully_qualified_namespace=self.config.fully_qualified_namespace,
+                credential=self._get_credential(),
+            ) as sb_client:
+                with sb_client.get_queue_receiver(self.config.queue_name) as receiver:
+                    receiver.peek_messages(max_message_count=1)
+        except (ClientAuthenticationError, ServiceBusAuthenticationError, ServiceBusAuthorizationError) as exc:
+            raise ServiceBusAuthError(
+                f"No se pudo acceder a la cola {self.config.queue_name!r}. Con Microsoft Entra ID, "
+                "Service Bus responde igual en dos casos: la cola no existe en el namespace, o la "
+                "aplicación no tiene el rol 'Azure Service Bus Data Receiver' sobre ella. Verifica "
+                f"el nombre de la cola y la asignación del rol. Detalle: {exc}"
+            ) from exc
+        except MessagingEntityNotFoundError as exc:
+            raise ServiceBusDataError(f"La cola {self.config.queue_name!r} no existe.") from exc
+        except ServiceBusError as exc:
+            raise ServiceBusNetworkError(f"No se pudo conectar a Service Bus: {exc}") from exc
         self._logger.info(
             "Ping exitoso a Service Bus %s", self.config.fully_qualified_namespace
         )
@@ -101,8 +132,8 @@ class ServiceBusClient:
         """
         if body is not None and not isinstance(body, str):
             raise ServiceBusDataError(f"body debe ser un string, no {type(body).__name__}.")
-        if not body:
-            raise ServiceBusDataError("body no puede estar vacío.")
+        if not body or not body.strip():
+            raise ServiceBusDataError("body no puede estar vacío ni contener solo espacios.")
         try:
             with _AzureServiceBusClient(
                 fully_qualified_namespace=self.config.fully_qualified_namespace,
@@ -167,6 +198,13 @@ class ServiceBusClient:
             raise ServiceBusAuthError(
                 f"Credenciales inválidas o sin permiso suficiente para recibir: {exc}"
             ) from exc
+        except MessageLockLostError as exc:
+            raise ServiceBusDataError(
+                "El mensaje se recibió pero no se pudo confirmar porque su bloqueo venció "
+                "(sigue en la cola y se volverá a entregar). Suele ocurrir si el reloj del "
+                "equipo que ejecuta el conector está desfasado más que la 'duración del "
+                f"bloqueo' de la cola. Detalle: {exc}"
+            ) from exc
         except ServiceBusError as exc:
             raise ServiceBusDataError(f"No se pudo recibir el mensaje: {exc}") from exc
         self._logger.info("Mensaje recibido y confirmado de %s", self.config.queue_name)
@@ -178,6 +216,9 @@ class ServiceBusClient:
 
     def get_queue_metrics(self) -> dict[str, Any]:
         """Consulta métricas de la cola configurada.
+
+        Requiere el rol "Azure Service Bus Data Owner": Service Bus exige el
+        derecho Manage para leer la descripción de la cola.
 
         Returns:
             Dict con: active_message_count, dead_letter_message_count,
@@ -195,7 +236,9 @@ class ServiceBusClient:
                 props = admin_client.get_queue_runtime_properties(self.config.queue_name)
         except ClientAuthenticationError as exc:
             raise ServiceBusAuthError(
-                f"Credenciales inválidas o sin permiso suficiente para consultar métricas: {exc}"
+                "Sin permiso para consultar métricas: Service Bus exige el derecho Manage "
+                "(rol 'Azure Service Bus Data Owner'); los roles Data Sender/Receiver no "
+                f"alcanzan. Detalle: {exc}"
             ) from exc
         except ResourceNotFoundError as exc:
             raise ServiceBusDataError(
@@ -204,6 +247,12 @@ class ServiceBusClient:
         except ServiceRequestError as exc:
             raise ServiceBusNetworkError(f"No se pudo conectar a Service Bus: {exc}") from exc
         except HttpResponseError as exc:
+            if exc.status_code in (401, 403):
+                raise ServiceBusAuthError(
+                    "Sin permiso para consultar métricas: Service Bus exige el derecho Manage "
+                    "(rol 'Azure Service Bus Data Owner'); los roles Data Sender/Receiver no "
+                    "alcanzan."
+                ) from exc
             raise ServiceBusDataError(f"Error de Service Bus: {exc}") from exc
 
         result = {

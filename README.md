@@ -23,11 +23,15 @@ namespace o a la cola específica:
 
 - **"Azure Service Bus Data Sender"**: necesario para `send_message`.
 - **"Azure Service Bus Data Receiver"**: necesario para
-  `receive_message` y `get_queue_metrics`.
-
-No otorgues el rol **"Azure Service Bus Data Owner"** ni permisos de
-administración del namespace (crear/eliminar colas, cambiar
-configuración).
+  `receive_message` y para la prueba de conexión (`ping` hace un *peek*
+  que no consume ni bloquea mensajes).
+- **"Azure Service Bus Data Owner"**: solo si vas a usar
+  `get_queue_metrics`. Service Bus exige el derecho *Manage* para leer
+  la descripción de la cola ("Get the queue description" en la tabla de
+  derechos de Microsoft), así que con Sender + Receiver esa operación
+  falla con un error de permisos. Data Owner también permite administrar
+  entidades: asígnalo limitado a la cola, nunca al namespace completo, y
+  solo si necesitas las métricas.
 
 ## Variables de entorno (`RUVIC_SERVICE_BUS_*`)
 
@@ -70,3 +74,10 @@ python validate_local.py
 - `get_queue_metrics` usa `ServiceBusAdministrationClient`, que es
   parte del mismo paquete `azure-servicebus` (no requiere
   `azure-mgmt-servicebus` por separado).
+- `send_message` rechaza mensajes vacíos o de solo espacios.
+- **Reloj del equipo:** el SDK decide si el bloqueo de un mensaje recibido
+  sigue vigente comparando la hora del servidor con la hora local. Si el
+  reloj de la máquina que ejecuta el conector está desfasado más que la
+  "duración del bloqueo" de la cola (1 minuto por defecto), recibir falla
+  con un error de bloqueo vencido: el mensaje no se pierde, sigue en la
+  cola. Sincroniza la hora (NTP) o aumenta la duración del bloqueo.

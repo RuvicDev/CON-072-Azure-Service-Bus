@@ -59,7 +59,7 @@
         </li>
         <li>
           <strong data-i18n="step.2.label">Otorgá acceso al namespace o a la cola con mínimo privilegio.</strong>
-          <p data-i18n="step.2.body">Asigná los roles RBAC "Azure Service Bus Data Sender" (para enviar) y "Azure Service Bus Data Receiver" (para recibir y consultar métricas) al Service Principal, con alcance limitado al namespace o, idealmente, a la cola específica.</p>
+          <p data-i18n="step.2.body">Asigná los roles RBAC "Azure Service Bus Data Sender" (para enviar) y "Azure Service Bus Data Receiver" (para recibir y para la prueba de conexión). Las métricas de la cola requieren además "Azure Service Bus Data Owner", porque Service Bus exige el derecho Manage para leerlas al Service Principal, con alcance limitado al namespace o, idealmente, a la cola específica.</p>
         </li>
         <li>
           <strong data-i18n="step.3.label">Anotá los identificadores necesarios.</strong>
@@ -74,7 +74,8 @@
         <thead><tr><th data-i18n="table.permiso">Permiso</th><th data-i18n="table.para_que">Para qué sirve</th></tr></thead>
         <tbody>
           <tr><td>Azure Service Bus Data Sender</td><td data-i18n="perm.sender">Enviar mensajes a la cola</td></tr>
-          <tr><td>Azure Service Bus Data Receiver</td><td data-i18n="perm.receiver">Recibir mensajes y consultar métricas de la cola</td></tr>
+          <tr><td>Azure Service Bus Data Receiver</td><td data-i18n="perm.receiver">Recibir mensajes y prueba de conexión</td></tr>
+          <tr><td>Azure Service Bus Data Owner</td><td data-i18n="perm.owner">Solo para consultar métricas de la cola (requiere el derecho Manage)</td></tr>
         </tbody>
       </table>
       <div class="callout callout-info">
@@ -151,11 +152,11 @@
         "step.1.label": "Registra una aplicación (Service Principal) dedicada.",
         "step.1.body": "En Azure AD → App registrations → New registration. Generá un Client Secret en \"Certificates & secrets\".",
         "step.2.label": "Otorgá acceso al namespace o a la cola con mínimo privilegio.",
-        "step.2.body": "Asigná los roles RBAC \"Azure Service Bus Data Sender\" (para enviar) y \"Azure Service Bus Data Receiver\" (para recibir y consultar métricas) al Service Principal, con alcance limitado al namespace o, idealmente, a la cola específica.",
+        "step.2.body": "Asigná los roles RBAC \"Azure Service Bus Data Sender\" (para enviar) y \"Azure Service Bus Data Receiver\" (para recibir y para la prueba de conexión). Las métricas de la cola requieren además \"Azure Service Bus Data Owner\", porque Service Bus exige el derecho Manage para leerlas al Service Principal, con alcance limitado al namespace o, idealmente, a la cola específica.",
         "step.3.label": "Anotá los identificadores necesarios.",
         "step.3.body": "Tenant ID, Client ID, Client Secret, el namespace completo (Overview → Host name, ej. mi-namespace.servicebus.windows.net) y el nombre de la cola.",
         "section.permisos": "Permisos requeridos", "table.permiso": "Permiso", "table.para_que": "Para qué sirve",
-        "perm.sender": "Enviar mensajes a la cola", "perm.receiver": "Recibir mensajes y consultar métricas de la cola",
+        "perm.sender": "Enviar mensajes a la cola", "perm.receiver": "Recibir mensajes y prueba de conexión", "perm.owner": "Solo para consultar métricas de la cola (requiere el derecho Manage)",
         "perm.note_title": "Nota",
         "perm.note_body": "No se otorga el rol \"Azure Service Bus Data Owner\" ni permisos de administración del namespace (crear/eliminar colas, cambiar configuración).",
         "section.configuracion_ruvic": "Configuración en Ruvic",
@@ -210,11 +211,11 @@
         "step.1.label": "Register a dedicated application (Service Principal).",
         "step.1.body": "Azure AD → App registrations → New registration. Generate a Client Secret under \"Certificates & secrets\".",
         "step.2.label": "Grant least-privilege access to the namespace or queue.",
-        "step.2.body": "Assign the RBAC roles \"Azure Service Bus Data Sender\" (to send) and \"Azure Service Bus Data Receiver\" (to receive and query metrics) to the Service Principal, scoped to the namespace or, ideally, the specific queue.",
+        "step.2.body": "Assign the RBAC roles \"Azure Service Bus Data Sender\" (to send) and \"Azure Service Bus Data Receiver\" (to receive and for the connection test). Queue metrics additionally require \"Azure Service Bus Data Owner\", because Service Bus requires the Manage right to read them to the Service Principal, scoped to the namespace or, ideally, the specific queue.",
         "step.3.label": "Note down the required identifiers.",
         "step.3.body": "Tenant ID, Client ID, Client Secret, the full namespace (Overview → Host name, e.g. my-namespace.servicebus.windows.net) and the queue name.",
         "section.permisos": "Required permissions", "table.permiso": "Permission", "table.para_que": "Why the connector needs it",
-        "perm.sender": "Send messages to the queue", "perm.receiver": "Receive messages and query queue metrics",
+        "perm.sender": "Send messages to the queue", "perm.receiver": "Receive messages and the connection test", "perm.owner": "Only to query queue metrics (requires the Manage right)",
         "perm.note_title": "Note",
         "perm.note_body": "The \"Azure Service Bus Data Owner\" role is not granted, nor is any namespace administration permission (creating/deleting queues, changing configuration).",
         "section.configuracion_ruvic": "Setup in Ruvic",
